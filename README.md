@@ -41,7 +41,7 @@ chmod +x docker-start.sh
 >
 > See [DOCKER-QUICKSTART.md](./DOCKER-QUICKSTART.md) for detailed Docker instructions.
 
-### Manual Docker Start
+### Manual Docker Start (Recommended)
 
 ```bash
 # Without blockchain (recommended for testing)
@@ -49,6 +49,13 @@ docker-compose up -d --build
 
 # With blockchain support (Anvil)
 docker-compose --profile blockchain up -d --build
+
+# For check docker status
+docker-compose ps
+docker-compose logs -f
+
+# For stop docker compose
+docker-compose down
 ```
 
 **Access:**

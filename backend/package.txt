@@ -1,0 +1,10 @@
+bun add -d @types/express
+bun add -d @types/cors
+bun add -d @types/ethers
+bun add jsonwebtoken @types/jsonwebtoken uuid @types/uuid
+bun add mongoose bcryptjs multer
+bun add -d @types/bcryptbun
+bunx tsc --noEmit -> Untuk memeriksa error dependency
+
+How to check it if the dependency available ? 
+bun pm ls <dependency_name>

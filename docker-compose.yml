@@ -1,0 +1,82 @@
+services:
+  # MongoDB Database
+  mongodb:
+    image: mongo:7.0
+    container_name: chainpub-mongodb
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+      - mongodb_config:/data/configdb
+    environment:
+      MONGO_INITDB_DATABASE: chainpub
+    networks:
+      - chainpub-network
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/chainpub --quiet
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Backend API
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: chainpub-backend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      MONGODB_URI: mongodb://mongodb:27017/chainpub
+      JWT_SECRET: ${JWT_SECRET:-your-super-secret-jwt-key-change-this}
+      PORT: 3000
+      CORS_ORIGIN: http://localhost
+      NODE_ENV: production
+    volumes:
+      - uploads_data:/app/uploads
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    networks:
+      - chainpub-network
+
+  # Frontend Web App
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: chainpub-frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - chainpub-network
+
+  # Local Blockchain (Anvil) - Optional for blockchain features
+  anvil:
+    image: ghcr.io/foundry-rs/foundry:latest
+    container_name: chainpub-anvil
+    restart: unless-stopped
+    ports:
+      - "8545:8545"
+    command: anvil --host 0.0.0.0 --chain-id 31337
+    networks:
+      - chainpub-network
+    profiles:
+      - blockchain
+
+networks:
+  chainpub-network:
+    driver: bridge
+
+volumes:
+  mongodb_data:
+    driver: local
+  mongodb_config:
+    driver: local
+  uploads_data:
+    driver: local

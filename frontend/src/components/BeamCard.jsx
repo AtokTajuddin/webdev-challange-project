@@ -67,6 +67,13 @@ const BeamCard = ({ title, description, hash, author, isFork, parentHash, delay,
   };
 
   const handleFork = () => {
+    // Check if user is logged in
+    const token = localStorage.getItem('token');
+    if (!token) {
+      alert('Please login first to fork this work');
+      navigate('/login');
+      return;
+    }
     // Navigate to upload page with parent hash
     navigate(`/upload?fork=${hash}`);
   };

@@ -17,23 +17,36 @@ const Login = () => {
     setError('');
     setIsLoading(true);
 
-    if (isRegister) {
-      const res = await register(formData.name, formData.email, formData.password);
-      if (res.success) {
-        alert("Register Sukses! Silakan Login.");
-        setIsRegister(false);
+    try {
+      if (isRegister) {
+        const res = await register(formData.name, formData.email, formData.password);
+        console.log('Register response:', res);
+        if (res.success) {
+          alert("Register Sukses! Silakan Login.");
+          setIsRegister(false);
+          setFormData({ name: '', email: '', password: '' });
+        } else {
+          const errorMsg = res.message || 'Registration failed. Please try again.';
+          console.error('Register error:', errorMsg);
+          setError(errorMsg);
+        }
       } else {
-        setError(res.message);
+        const res = await login(formData.email, formData.password);
+        console.log('Login response:', res);
+        if (res.success) {
+          navigate('/'); // Redirect ke home only if success
+        } else {
+          const errorMsg = res.message || 'Invalid email or password. Please try again.';
+          console.error('Login error:', errorMsg);
+          setError(errorMsg);
+        }
       }
-    } else {
-      const res = await login(formData.email, formData.password);
-      if (res.success) {
-        navigate('/'); // Redirect ke home
-      } else {
-        setError(res.message);
-      }
+    } catch (err) {
+      console.error('Unexpected error:', err);
+      setError('An unexpected error occurred. Please try again.');
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
   };
 
   return (
@@ -54,8 +67,8 @@ const Login = () => {
         </div>
 
         {error && (
-          <div className="bg-red-500/10 border border-red-500/50 text-red-400 p-3 rounded-lg text-sm mb-4">
-            {error}
+          <div className="bg-red-500/20 border-2 border-red-500 text-red-300 p-4 rounded-lg text-sm mb-4 font-medium shadow-lg shadow-red-500/20">
+            ⚠️ {error}
           </div>
         )}
 

@@ -56,6 +56,13 @@ const WorkDetail = () => {
   };
 
   const handleFork = () => {
+    // Check if user is logged in
+    const token = localStorage.getItem('token');
+    if (!token) {
+      alert('Please login first to fork this work');
+      navigate('/login');
+      return;
+    }
     navigate(`/upload?fork=${work.fileHash}`);
   };
 

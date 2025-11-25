@@ -7,12 +7,20 @@ const Navbar = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
 
-  const handleAuthAction = () => {
+  const handleLogin = () => {
     if (user) {
       logout();
       navigate('/');
     } else {
-      navigate('/auth');
+      navigate('/auth?mode=login');
+    }
+  };
+
+  const handleRegister = () => {
+    if (user) {
+      navigate('/');
+    } else {
+      navigate('/auth?mode=register');
     }
   };
 
@@ -43,15 +51,17 @@ const Navbar = () => {
           <Link to="/upload" className="hover:text-white transition-colors">Upload</Link>
         </div>
 
-        {/* auth pill */}
+        {/* auth actions */}
         <div className="flex items-center gap-3">
           {user && (
             <span className="hidden sm:inline text-[11px] text-slate-300">
               Signed in as <span className="text-cyan-300 font-medium">{user.email}</span>
             </span>
           )}
+
+          {/* Login button */}
           <button
-            onClick={handleAuthAction}
+            onClick={handleLogin}
             className="relative px-3.5 py-1.5 rounded-full text-[11px] font-semibold flex items-center gap-1.5 border border-white/10 bg-slate-900/80 hover:border-cyan-400/60 hover:bg-slate-900/90 text-slate-100 transition"
           >
             {user ? (
@@ -64,6 +74,16 @@ const Navbar = () => {
               </>
             )}
           </button>
+
+          {/* Register button (only when not signed in) */}
+          {!user && (
+            <button
+              onClick={handleRegister}
+              className="relative px-3.5 py-1.5 rounded-full text-[11px] font-semibold flex items-center gap-1.5 border border-cyan-400/40 bg-cyan-500/20 hover:border-cyan-300/70 hover:bg-cyan-500/30 text-cyan-100 transition"
+            >
+              <ShieldCheck size={13} /> Register
+            </button>
+          )}
         </div>
       </div>
     </nav>

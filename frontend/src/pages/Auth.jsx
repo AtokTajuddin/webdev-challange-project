@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Lock, Mail, User, AlertCircle, ShieldCheck } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 const Auth = () => {
   const navigate = useNavigate();
   const { login, register } = useAuth();
+  const [searchParams] = useSearchParams();
   const [isLogin, setIsLogin] = useState(true);
   const [formData, setFormData] = useState({
     username: '',
@@ -40,6 +41,18 @@ const Auth = () => {
       easing: 'easeInOutSine',
     });
   }, [isLogin]);
+
+  // Initialize mode from query param: /auth?mode=register|login
+  useEffect(() => {
+    const mode = (searchParams.get('mode') || '').toLowerCase();
+    if (mode === 'register') {
+      setIsLogin(false);
+    } else if (mode === 'login') {
+      setIsLogin(true);
+    }
+    // no dependency on isLogin to avoid loops
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
 
   const handleChange = (e) => {
     setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));

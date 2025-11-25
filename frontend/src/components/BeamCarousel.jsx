@@ -12,9 +12,14 @@ const BeamCarousel = ({ works }) => {
   const animationRef = useRef(null);
   const stateRef = useRef({
     position: 0,
-    velocity: 120, // Fixed speed
+    velocity: 120, // auto scroll speed (px/s)
     direction: -1,
     lastTime: 0,
+    // drag interaction
+    isDragging: false,
+    lastPointerX: 0,
+    samples: [], // {x,t}
+    manualVelocity: 0, // inertia px/s
   });
 
   const codeChars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789(){}[]<>;:,._-+=!@#$%^&*|\\/\"'`~?";
@@ -212,7 +217,7 @@ const BeamCarousel = ({ works }) => {
     };
   }, []);
 
-  // Animation loop with fixed speed
+  // Animation loop with auto scroll + drag + inertia
   useEffect(() => {
     if (!containerRef.current || !cardLineRef.current) return;
 
@@ -228,11 +233,24 @@ const BeamCarousel = ({ works }) => {
       const currentTime = performance.now();
       const deltaTime = (currentTime - stateRef.current.lastTime) / 1000;
       stateRef.current.lastTime = currentTime;
+      // Movement priority: drag > inertia > auto
+      if (stateRef.current.isDragging) {
+        // position already updated in pointer move handler
+      } else if (Math.abs(stateRef.current.manualVelocity) > 1) {
+        // inertia motion
+        stateRef.current.position += stateRef.current.manualVelocity * deltaTime;
+        const decel = 1800; // px/s^2
+        if (stateRef.current.manualVelocity > 0) {
+          stateRef.current.manualVelocity = Math.max(0, stateRef.current.manualVelocity - decel * deltaTime);
+        } else {
+          stateRef.current.manualVelocity = Math.min(0, stateRef.current.manualVelocity + decel * deltaTime);
+        }
+      } else {
+        // auto scroll
+        stateRef.current.position += stateRef.current.velocity * stateRef.current.direction * deltaTime;
+      }
 
-      // Move at constant velocity
-      stateRef.current.position += stateRef.current.velocity * stateRef.current.direction * deltaTime;
-
-      // Loop seamlessly
+      // Loop seamlessly (wrap position)
       if (stateRef.current.position < -cardLineWidth) {
         stateRef.current.position = containerWidth;
       } else if (stateRef.current.position > containerWidth) {
@@ -253,6 +271,68 @@ const BeamCarousel = ({ works }) => {
       }
     };
   }, []); // Empty dependency - runs once, never resets
+
+  // Pointer event handlers for drag
+  const beginDrag = (clientX, pointerId) => {
+    stateRef.current.isDragging = true;
+    stateRef.current.lastPointerX = clientX;
+    stateRef.current.samples = [{ x: clientX, t: performance.now() }];
+    stateRef.current.manualVelocity = 0; // cancel inertia
+    if (containerRef.current && pointerId !== undefined) {
+      try { containerRef.current.setPointerCapture(pointerId); } catch {}
+    }
+    if (containerRef.current) containerRef.current.classList.add('select-none');
+  };
+
+  const dragMove = (clientX) => {
+    if (!stateRef.current.isDragging) return;
+    const dx = clientX - stateRef.current.lastPointerX;
+    stateRef.current.position += dx;
+    stateRef.current.lastPointerX = clientX;
+    const nowT = performance.now();
+    stateRef.current.samples.push({ x: clientX, t: nowT });
+    // keep only recent samples (<=120ms)
+    stateRef.current.samples = stateRef.current.samples.filter(s => nowT - s.t <= 120);
+  };
+
+  const endDrag = (clientX, pointerId) => {
+    if (!stateRef.current.isDragging) return;
+    dragMove(clientX); // final update
+    const samples = stateRef.current.samples;
+    if (samples.length >= 2) {
+      const first = samples[0];
+      const last = samples[samples.length - 1];
+      const dt = (last.t - first.t) / 1000;
+      if (dt > 0) {
+        const dist = last.x - first.x;
+        // velocity scaled; clamp
+        let v = dist / dt;
+        const maxV = 2000; // clamp to avoid extremes
+        if (v > maxV) v = maxV;
+        if (v < -maxV) v = -maxV;
+        stateRef.current.manualVelocity = v;
+      }
+    }
+    stateRef.current.isDragging = false;
+    stateRef.current.samples = [];
+    if (containerRef.current && pointerId !== undefined) {
+      try { containerRef.current.releasePointerCapture(pointerId); } catch {}
+    }
+    if (containerRef.current) containerRef.current.classList.remove('select-none');
+  };
+
+  const handlePointerDown = (e) => {
+    beginDrag(e.clientX, e.pointerId);
+  };
+  const handlePointerMove = (e) => {
+    dragMove(e.clientX);
+  };
+  const handlePointerUp = (e) => {
+    endDrag(e.clientX, e.pointerId);
+  };
+  const handlePointerLeave = (e) => {
+    endDrag(e.clientX, e.pointerId);
+  };
 
   const handleCardClick = (workId) => {
     navigate(`/work/${workId}`);
@@ -277,7 +357,13 @@ const BeamCarousel = ({ works }) => {
       {/* Scrolling Card Display */}
       <div
         ref={containerRef}
-        className="absolute w-full h-[180px] top-1/2 -translate-y-1/2 flex items-center overflow-visible"
+        className="absolute w-full h-[180px] top-1/2 -translate-y-1/2 flex items-center overflow-visible cursor-grab"
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onPointerLeave={handlePointerLeave}
+        onPointerCancel={handlePointerUp}
+        style={{ touchAction: 'none', cursor: stateRef.current.isDragging ? 'grabbing' : 'grab' }}
       >
         <div
           ref={cardLineRef}
